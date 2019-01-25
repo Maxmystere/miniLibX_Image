@@ -6,7 +6,7 @@
 /*   By: magrab <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2019/01/18 22:09:05 by magrab            #+#    #+#             */
-/*   Updated: 2019/01/18 23:07:12 by magrab           ###   ########.fr       */
+/*   Updated: 2019/01/25 16:38:48 by magrab           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,12 +113,9 @@ int		mouse_hook(int button, int x, int y, void *win)
 	return (0);
 }
 
-void fill_pixel(char *istr, int x, int y, int color)
+void fill_pixel(unsigned int *istr, int x, int y, int color)
 {
-	istr[x * 4 + y * 4 * 1000] = color % 0x100;
-	istr[x * 4 + y * 4 * 1000 + 1] = color % 0x10000 / 0x100;
-	istr[x * 4 + y * 4 * 1000 + 2] = color / 0x10000;
-	istr[x * 4 + y * 4 * 1000 + 3] = color / 0x1000000; 
+	istr[x + y * 1000] = color;
 }
 
 int		main()
@@ -129,7 +126,7 @@ int		main()
 	int bpp = 32;
 	int s_l = 1000 * 4;
 	int endian = 0;
-	char *istr =  mlx_get_data_addr(img, &(bpp), &(s_l), &(endian));
+	unsigned int *istr =  (unsigned int *)mlx_get_data_addr(img, &(bpp), &(s_l), &(endian));
 
 	mlx_hook(win, 2, 0, key_press, win);
 	mlx_hook(win, 3, 0, key_release, win);
@@ -176,8 +173,6 @@ int		main()
 		fill_pixel(istr, x / 0x1, 28, x);
 		fill_pixel(istr, x / 0x1, 29, x);
 	}
-
-	printf("%s\n", istr);
 
 	mlx_put_image_to_window(istr, win, img, 0, 0);
 	mlx_loop(mlx);
