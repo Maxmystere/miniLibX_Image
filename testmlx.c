@@ -10,6 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+// Compile with cc -lmlx -framework OpenGL -framework AppKit -framework OpenCL
+
 #include <mlx.h>
 #include <stdlib.h>
 #include <stdio.h>
