@@ -36,6 +36,14 @@ typedef struct  s_frcl{
 	int		iter;
 }               t_frcl;
 
+typedef struct	s_test{
+	void	*mlx;
+	void	*win;
+	t_frcl	param;
+}				t_test;
+
+int		gpu_calcul(t_frcl param, void *mlx, void *win, int x,  int y);
+
 int		key_press(int key, void *param)
 {
 	static int dx = 0;
@@ -54,10 +62,15 @@ int		key_release(int key, void *param)
 	return (0);
 }
 
-int		mouse_hook(int button, int x, int y, void *win)
+int		mouse_hook(int button, int x, int y, t_test *test)
 {
-	printf("%d\n", x * y);
-	printf("button :%d\n", button);
+	gpu_calcul(test->param, test->mlx, test->win, x, y);
+	return (0);
+}
+
+int		mouse_move(int x, int y, t_test *test)
+{
+	gpu_calcul(test->param, test->mlx, test->win, x, y);
 	return (0);
 }
 
@@ -80,30 +93,26 @@ typedef struct  s_frcl{\
 __kernel void color(__global const t_frcl *in, __global unsigned int *out)\
 {\
 	const uint index = get_global_id(0);\
+	const uint x = index % in->winsx;\
+	const uint y = index / in->winsx;\
 \
-	out[index] = index / 4096;\
+	if (in->camx < x && x < 800 && in->camy < y && y < 800)\
+		out[index] = 0xFFFFFF;\
 }\
 ";
 
-int		main()
+
+int		gpu_calcul(t_frcl param, void *mlx, void *win, int x,  int y)
 {
 	t_gpu tcl;
-	t_frcl param;
-
-	param.winsx = 1000;
-	param.winsy = 1000;
-	param.camx = 0;
-	param.camy = 0;
-	param.camz = 10;
-	param.iter = 42;
-
-	// Setup MLX
-	void *mlx = mlx_init();
-	void *win = mlx_new_window(mlx, param.winsx, param.winsy, "Test");
-	void *img = mlx_new_image(mlx, param.winsx, param.winsy);
 	int bpp = 32;
 	int s_l = 1000 * 4;
 	int endian = 0;
+
+	param.camx = x;
+	param.camy = y;
+
+	void *img = mlx_new_image(mlx, param.winsx, param.winsy);
 	unsigned int *istr = (unsigned int *)mlx_get_data_addr(img, &(bpp), &(s_l), &(endian));
 
 	// Setup GPU
@@ -164,10 +173,37 @@ int		main()
 	// End GPU
 
 	mlx_put_image_to_window(istr, win, img, 0, 0);
+	mlx_destroy_image(mlx, img);
+
+	return (0);
+}
+
+int		main()
+{
+	t_gpu tcl;
+	t_frcl param;
+	t_test test;
+
+	param.winsx = 1000;
+	param.winsy = 1000;
+	param.camx = 0;
+	param.camy = 0;
+	param.camz = 10;
+	param.iter = 42;
+
+	// Setup MLX
+	void *mlx = mlx_init();
+	void *win = mlx_new_window(mlx, param.winsx, param.winsy, "Test");
+
+	test.mlx = mlx;
+	test.win = win;
+	test.param = param;
+	gpu_calcul(test.param, test.mlx, test.win, 0, 0);
 
 	mlx_hook(win, 2, 0, key_press, win);
 	mlx_hook(win, 3, 0, key_release, win);
-	mlx_mouse_hook(win, mouse_hook, win);
+	mlx_hook(win, 6, 0, mouse_move, &test);
+	mlx_mouse_hook(win, mouse_hook, &test);
 	mlx_loop(mlx);
 	return (0);
 }
