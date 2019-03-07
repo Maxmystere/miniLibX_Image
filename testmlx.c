@@ -44,7 +44,7 @@ typedef struct	s_test{
 
 int		gpu_calcul(t_frcl param, void *mlx, void *win, int x,  int y);
 
-int		key_press(int key, void *param)
+int		key_press(int key, t_test *test)
 {
 	static int dx = 0;
 	static int dy = 0;
@@ -53,10 +53,23 @@ int		key_press(int key, void *param)
 	printf("key :%d\n", key);
 	if (key == 53)
 		exit(0);
+	else if (key == 78)
+		test->param.camz += 5 + test->param.camz / 50;
+	else if (key == 69)
+		test->param.camz -= 15 + test->param.camz / 50;
+	else if (key == 123)
+		test->param.camx -= 5 + test->param.camz / 50;
+	else if (key == 124)
+		test->param.camx += 5 + test->param.camz / 50;
+	else if (key == 125)
+		test->param.camy += 5 + test->param.camz / 50;
+	else if (key == 126)
+		test->param.camy -= 5 + test->param.camz / 50;
+	gpu_calcul(test->param, test->mlx, test->win, test->param.camx, test->param.camy);
 	return (0);
 }
 
-int		key_release(int key, void *param)
+int		key_release(int key, t_test *test)
 {
 	printf("key release :%d\n", key);
 	return (0);
@@ -64,13 +77,15 @@ int		key_release(int key, void *param)
 
 int		mouse_hook(int button, int x, int y, t_test *test)
 {
-	gpu_calcul(test->param, test->mlx, test->win, x, y);
+	if (button == 4)
+		test->param.camz += 5;
+	if (button == 5)
+		test->param.camz -= 5;
 	return (0);
 }
 
 int		mouse_move(int x, int y, t_test *test)
 {
-	gpu_calcul(test->param, test->mlx, test->win, x, y);
 	return (0);
 }
 
@@ -95,9 +110,27 @@ __kernel void color(__global const t_frcl *in, __global unsigned int *out)\
 	const uint index = get_global_id(0);\
 	const uint x = index % in->winsx;\
 	const uint y = index / in->winsx;\
+	const double pr = x / in->camz - (in->camx + in->winsx / 4)/ (in->camz * 2);\
+	const double pi = y / in->camz - (in->camy + in->winsy / 4)/ (in->camz * 2);\
 \
-	if (in->camx < x && x < 800 && in->camy < y && y < 800)\
-		out[index] = 0xFFFFFF;\
+	double	new_r;\
+	double	new_i;\
+	double	old_r;\
+	double	old_i;\
+	int		i;\
+\
+	new_r = 0;\
+	new_i = 0;\
+	i = 0;\
+	while ((new_r * new_r + new_i * new_i) < 4.0 && i < in->iter)\
+	{\
+		old_r = new_r;\
+		old_i = new_i;\
+		new_r = old_r * old_r - old_i * old_i + pr;\
+		new_i = 2.0 * old_r * old_i + pi;\
+		i++;\
+	}\
+	out[index] = i * 0x11FF11;\
 }\
 ";
 
@@ -188,8 +221,8 @@ int		main()
 	param.winsy = 1000;
 	param.camx = 0;
 	param.camy = 0;
-	param.camz = 10;
-	param.iter = 42;
+	param.camz = 100;
+	param.iter = 144;
 
 	// Setup MLX
 	void *mlx = mlx_init();
@@ -200,8 +233,8 @@ int		main()
 	test.param = param;
 	gpu_calcul(test.param, test.mlx, test.win, 0, 0);
 
-	mlx_hook(win, 2, 0, key_press, win);
-	mlx_hook(win, 3, 0, key_release, win);
+	mlx_hook(win, 2, 0, key_press, &test);
+	mlx_hook(win, 3, 0, key_release, &test);
 	mlx_hook(win, 6, 0, mouse_move, &test);
 	mlx_mouse_hook(win, mouse_hook, &test);
 	mlx_loop(mlx);
